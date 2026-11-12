@@ -993,6 +993,18 @@ $('resetMonthConfirm').onclick=()=>{if(!LedgerCloud.canReset()){showMessage('처
 for(const id of ['ruleButton','rulesFooter'])$(id).onclick=()=>$('rulesDialog').showModal();$('closeRules').onclick=()=>$('rulesDialog').close();$('rulesDialog').onclick=e=>{if(e.target===$('rulesDialog')){const b=e.target.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)e.target.close();}};
 window.addEventListener('scroll',scheduleWorkbarLayout,{passive:true});window.addEventListener('resize',scheduleWorkbarLayout);if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(scheduleWorkbarLayout);observer.observe($('saveWorkbar'));observer.observe($('overview'));}
 $('dismissViewRefresh').onclick=()=>{viewRefreshMessage='';renderViewRefreshNotice();};
+// Keep the menu in sync as soon as the verification heading enters the viewport.
+let sectionNavFrame=0;
+function syncSectionNavigation(){
+ sectionNavFrame=0;if($('overview').hidden||document.body.classList.contains('cloud-locked'))return;
+ const heading=$('records').querySelector('.panel-heading h2').getBoundingClientRect(),wasRecords=$('recordsNav').classList.contains('active');
+ const active=heading.bottom<=innerHeight-16||(wasRecords&&heading.top<innerHeight-4)?'records':'overview';
+ for(const [id,name] of [['overviewNav','overview'],['recordsNav','records'],['uploadChangesNav','upload-changes']]){const chosen=name===active;$(id).classList.toggle('active',chosen);if(chosen)$(id).setAttribute('aria-current','location');else $(id).removeAttribute('aria-current');}
+ const hash='#'+active;if(location.hash!==hash)history.replaceState(history.state,'',hash);
+}
+function scheduleSectionNavigation(){if(!sectionNavFrame)sectionNavFrame=requestAnimationFrame(syncSectionNavigation);}
+window.addEventListener('scroll',scheduleSectionNavigation,{passive:true});window.addEventListener('resize',scheduleSectionNavigation);window.addEventListener('hashchange',scheduleSectionNavigation);
+if(typeof ResizeObserver==='function'){const sectionObserver=new ResizeObserver(scheduleSectionNavigation);sectionObserver.observe($('overview'));sectionObserver.observe($('saveWorkbar'));}
 updateNavigation();render();LedgerCloud.init({fresh,get:()=>state,set:(value,{preserveView=false,localImport=false}={})=>{const next=T.validateState(value),drafts=IV.restoreDrafts(next.validationDrafts,next),view=preserveView?captureView():null;viewRestoreGeneration++;pendingViewRestore=null;viewRefreshMessage='';if(!localImport)safetyUI?.replaced();if(!preserveView)baseViewPosition=null;uploadChangesUI?.clear(preserveView?'서버 최신 자료를 불러와 이전 비교 결과를 비웠습니다. 엑셀을 새로 업로드하면 변경 내역을 다시 확인할 수 있습니다.':'');state=next;delete state.validationDrafts;inputDrafts=drafts;inputHelpIds.clear();resetDateDraft();loadDateMode();setTimeout(()=>tickQueryClock(!!view),0);tab='all';lastBulk=null;resetDetailView();if(view)restoreViewConditions(view);},render,backup,capturePosition,status:v=>safetyUI?.status(v),saveCompleted:()=>safetyUI?.saved(),saveUncertain:()=>safetyUI?.uncertain(),saveResolved:same=>safetyUI?.resolved(same),restorePosition:restoreViewPosition,validationCount:()=>inputErrors.length,hasUncommittedDate:()=>dateDraftDirty,canApplyRemote:()=>!document.querySelector('dialog[open]'),navigate:()=>{location.hash='#overview';updateNavigation('overview');}});
 
 </script>
