@@ -415,11 +415,12 @@ window.LedgerCloud=(()=>{
  let connectionState='unknown',connectionNeedsCheck=false,lastResponseAt='',connectionNotice=false,connectionProbe=null,connectionEpoch=0,connectionRequest=0,connectionResult=0,saveTransportError=false;
  let startupAccount=null,startupPending=false,startupBusy=false,dataReady=false,startupStage='자료';
  let auditWarning='';
+ let tickTask=null,lastConnectionError='';
  let changeCacheBefore=null,changeCacheAfter=null,changeCache={data:false,conditions:false};
  let monthMeta={status:'draft'},remoteMonthLock=false,monthFinalization=false,finalizing=false;
  const locked=()=>remoteMonthLock||monthMeta.status==='confirmed';
  const responseContexts=new WeakMap();
- const MONTH_LIST_MS=30000,newRemoteMonths=new Set();
+ const MONTH_LIST_MS=120000,newRemoteMonths=new Set();
  let monthListTask=null,monthListGeneration=0,nextMonthListCheck=0,monthListCheckedAt='',monthListFailed=false,monthListManual=false,renderedMonthYears='',renderedMonthButtons='';
  const $=id=>document.getElementById(id),url=()=>String(window.LEDGER_GOOGLE_CONFIG?.apiUrl||'').trim();
  const clone=v=>JSON.parse(JSON.stringify(v));
@@ -467,13 +468,13 @@ window.LedgerCloud=(()=>{
  function connectionContext(){return {request:++connectionRequest,epoch:connectionEpoch,token,account:accountId};}
  function currentConnectionContext(c){return c.epoch===connectionEpoch&&c.token===token&&c.account===accountId&&c.request>=connectionResult;}
  function recordConnectionResponse(c){if(!currentConnectionContext(c))return;connectionResult=c.request;lastResponseAt=new Date().toISOString();if(!connectionNeedsCheck)connectionState='ok';updateStatus();}
- function recordConnectionFailure(c){if(!currentConnectionContext(c)||!accountId||!token)return;connectionResult=c.request;connectionNeedsCheck=true;connectionState='failed';connectionNotice=true;updateStatus();}
+ function recordConnectionFailure(c,error){if(!currentConnectionContext(c)||!accountId||!token)return;connectionResult=c.request;connectionNeedsCheck=true;connectionState='failed';connectionNotice=true;lastConnectionError=error?.name==='AbortError'?'서버 응답 시간 초과':error?.httpStatus?'서버 HTTP '+error.httpStatus:error?.code?'서버 오류 '+error.code:browserOffline()?'인터넷 연결 끊김':'네트워크 또는 웹앱 응답 오류';updateStatus();}
  function confirmConnection(r,announce=false){
   const c=responseContexts.get(r);if(!c||!currentConnectionContext(c))return false;
-  const recovering=connectionNeedsCheck;connectionNeedsCheck=false;connectionState='ok';if(recovering)nextAuto=Date.now()+AUTO_MS;if(recovering||announce)connectionNotice=true;
+  const recovering=connectionNeedsCheck;connectionNeedsCheck=false;connectionState='ok';lastConnectionError='';if(recovering)nextAuto=Date.now()+AUTO_MS;if(recovering||announce)connectionNotice=true;
   if(saveTransportError){saveTransportError=false;if(!paused&&!authRequired)$('syncConflict').hidden=true;}updateStatus();return true;
  }
- function resetConnection(){connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;}
+ function resetConnection(){connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;lastConnectionError='';}
  function renderConnection(){
   const active=!!token&&!!accountId,checking=!!connectionProbe,state=authRequired?'auth':checking?'checking':connectionState;
   $('connectionSummary').hidden=!active;$('connectionBadge').hidden=!active;
@@ -488,7 +489,7 @@ window.LedgerCloud=(()=>{
   $('connectionNotice').hidden=!active||!connectionNotice||authRequired||paused;$('connectionNotice').className='connection-notice '+(connectionNeedsCheck?'warning':'success');
   $('connectionNoticeTitle').textContent=checking?'서버 응답과 최신 저장 버전을 확인하고 있습니다.':connectionNeedsCheck?'서버 연결을 확인하지 못했습니다.':'서버 연결을 다시 확인했습니다.';
   $('connectionNoticeBody').textContent=connectionNeedsCheck?(pending||validationCount()||hooks?.hasUncommittedDate?.()?'현재 화면의 작업은 유지됩니다. 새 변경사항은 저장 완료를 확인하기 전까지 서버에 반영된 것으로 볼 수 없습니다.':'마지막 저장본과 현재 화면은 유지됩니다. 최신 자료 조회와 추가 저장을 위해 연결을 다시 확인해 주세요.'):(validationCount()?'현재 작업과 입력 오류를 유지했고 저장 버전도 동일합니다. 입력 오류를 모두 수정한 뒤 저장해 주세요.':pending?'내 미저장 작업을 유지했고 저장 버전도 동일합니다. 저장 버튼 또는 다음 자동저장 시점에 저장할 수 있습니다.':'현재 화면을 유지한 채 최신 저장 버전을 확인했습니다. 연결 확인으로 새로 저장하지는 않습니다.');
-  $('connectionNoticeHint').textContent=connectionNeedsCheck?'인터넷 또는 서버의 일시적인 문제일 수 있습니다. 약 30초마다 자동 재확인합니다. 저장 완료를 확인하기 전에는 창을 닫지 마세요.':'마지막 저장 시각은 새 저장이 완료될 때만 변경됩니다.';
+  $('connectionNoticeHint').textContent=connectionNeedsCheck?(lastConnectionError?lastConnectionError+' · ':'')+'약 30초마다 자동 재확인합니다. 저장 완료를 확인하기 전에는 창을 닫지 마세요.':'마지막 저장 시각은 새 저장이 완료될 때만 변경됩니다.';
   $('connectionRetry').disabled=!active||busy||importing||!!saving||checking||authRequired;$('workbarRetry').hidden=!connectionNeedsCheck||authRequired;$('workbarRetry').disabled=$('connectionRetry').disabled;$('workbarRetry').textContent=checking?'확인 중…':'다시 연결 확인';$('workbarReauth').hidden=!authRequired;$('workbarReauth').disabled=$('syncReauth').disabled;$('workbarReview').hidden=!paused||authRequired;$('workbarReview').disabled=busy||importing||!!saving;$('connectionRetry').textContent=checking?'확인 중…':'다시 연결 확인';$('connectionDismiss').hidden=connectionNeedsCheck||checking;
  }
  async function checkConnection(announce=true){
@@ -516,9 +517,22 @@ window.LedgerCloud=(()=>{
  }
  async function api(action,data={}){
   if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url()))throw Error('Google 웹앱 주소 연결이 필요합니다.');
-  const requestToken=token,context=connectionContext(),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45000);
-  try{const response=await fetch(url(),{method:'POST',redirect:'follow',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,token:requestToken,...data}),signal:controller.signal});if(response.ok===false){const e=Error('서버 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');e.connectionFailure=true;throw e;}let v;try{v=await response.json();}catch{throw Error('Google 웹앱의 접근 권한과 /exec 주소를 확인해 주세요.');}if(!v||v.ok!==true){const e=Error(v?.error||'저장 요청에 실패했습니다.');e.code=v?.code||500;e.staleAuth=e.code===401&&action!=='login'&&requestToken!==token;if(e.code<500&&e.code!==401)recordConnectionResponse(context);if(e.code===401&&!e.staleAuth&&action!=='login'&&accountId)conflict(e);throw e;}responseContexts.set(v,context);recordConnectionResponse(context);return v;
-  }catch(e){if(e.connectionFailure||!e.code||e.code>=500)recordConnectionFailure(context);throw e;}finally{clearTimeout(timeout);}
+  const requestToken=token,context=connectionContext();
+  const retryableRead=['identity','months','readMonth','read','monthStatus','readConfirmation'].includes(action);
+  for(let attempt=0;attempt<2;attempt++){
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45000);
+   try{
+    const response=await fetch(url(),{method:'POST',redirect:'follow',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,token:requestToken,...data}),signal:controller.signal});
+    if(response.ok===false){const e=Error('서버 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');e.connectionFailure=true;e.httpStatus=response.status;throw e;}
+    let v;try{v=await response.json();}catch{throw Error('Google 웹앱의 접근 권한과 /exec 주소를 확인해 주세요.');}
+    if(!v||v.ok!==true){const e=Error(v?.error||'요청에 실패했습니다.');e.code=v?.code||500;e.staleAuth=e.code===401&&action!=='login'&&requestToken!==token;if(e.code<500&&e.code!==401)recordConnectionResponse(context);if(e.code===401&&!e.staleAuth&&action!=='login'&&accountId)conflict(e);throw e;}
+    responseContexts.set(v,context);recordConnectionResponse(context);return v;
+   }catch(e){
+    const transient=e.httpStatus?[408,429,500,502,503,504].includes(e.httpStatus):!e.code||[429,500,502,503,504].includes(e.code);
+    if(attempt===0&&retryableRead&&transient&&!browserOffline()&&requestToken===token&&currentConnectionContext(context)){clearTimeout(timeout);await new Promise(resolve=>setTimeout(resolve,800+Math.floor(Math.random()*400)));if(requestToken!==token)throw e;continue;}
+    if(e.connectionFailure||!e.code||e.code>=500||e.code===429)recordConnectionFailure(context,e);throw e;
+   }finally{clearTimeout(timeout);}
+  }
  }
  function remember(){try{sessionStorage.setItem(SESSION_KEY,token);}catch{}}
  function forget(){token='';resetConnection();resetMonthList();try{sessionStorage.removeItem(SESSION_KEY);}catch{}}
@@ -570,7 +584,7 @@ window.LedgerCloud=(()=>{
   $('refreshMonthList').title='월 목록 다시 확인'+(monthListCheckedAt?' · 마지막 확인 '+formatTime(monthListCheckedAt):'');
   $('refreshMonthList').setAttribute('aria-busy',String(!!monthListTask));
   const fresh=[...newRemoteMonths].sort();$('monthListStatus').className='month-list-status'+(monthListFailed?' failed':fresh.length?' updated':'');
-  $('monthListStatus').textContent=monthListFailed?'목록 확인 실패 · 기존 목록 유지':monthListTask&&monthListManual?'월 목록 확인 중…':fresh.length?'새 자료: '+fresh.slice(0,2).join(', ')+(fresh.length>2?' 외 '+(fresh.length-2)+'개':''):'자동 갱신 · 약 30초';
+  $('monthListStatus').textContent=monthListFailed?'목록 확인 실패 · 기존 목록 유지':monthListTask&&monthListManual?'월 목록 확인 중…':fresh.length?'새 자료: '+fresh.slice(0,2).join(', ')+(fresh.length>2?' 외 '+(fresh.length-2)+'개':''):'목록 자동 갱신 · 약 2분';
  }
  async function refreshMonths(force=false){
   if(!monthly||!token||!accountId||busy||importing||saving||authRequired||connectionNeedsCheck||connectionProbe||document.hidden)return false;
@@ -668,22 +682,25 @@ window.LedgerCloud=(()=>{
  async function logout(){
   if(busy||importing)return;setBusy(true);try{const choice=await beforeLeave();if(choice==='cancel')return;forget();pending=null;paused=false;authRequired=false;revision=0;accountId='';selectedMonth='';monthMeta={status:'draft'};remoteMonthLock=false;months=[];hooks.set(hooks.fresh());hooks.render();$('syncConflict').hidden=true;$('loginId').value='';showLogin();}finally{setBusy(false);}
  }
- async function tick(forceMonths=false){
+ async function runTick(forceMonths=false){
   if(startupPending||!dataReady)return;
   if(!token||busy||importing||saving||connectionProbe)return;
   if(connectionNeedsCheck&&!authRequired){if(!document.hidden&&await checkConnection(false))await refreshMonths(true);return;}
   if(authRequired)return;
-  if(monthFinalization&&!paused&&!document.hidden){const id=accountId,session=token,month=selectedMonth,base=revision;try{const r=await api('monthStatus',{month});if(id!==accountId||session!==token||month!==selectedMonth||base!==revision)return;
-   if(r.status==='confirmed'&&!locked()){if(pending||validationCount()||hooks.hasUncommittedDate?.()||hooks.canApplyRemote?.()===false){conflict({code:423,message:'다른 PC에서 이 월을 확정했습니다. 미저장 작업을 유지했습니다. 화면의 작업을 확인한 뒤 최신 확정본을 불러오세요.'});return;}await acceptState(await readData(),true);updateStatus();return;}
-   if(r.status==='draft'&&monthMeta.status==='confirmed'){if(hooks.canApplyRemote?.()===false)return;await acceptState(await readData(),true);updateStatus();return;}
-  }catch(e){if(e.code===401&&!e.staleAuth)conflict(e);if(connectionNeedsCheck)return;}}
   if(!locked()&&!paused&&!validationCount()&&Date.now()>=nextAuto){nextAuto=Date.now()+AUTO_MS;if(pending){try{await flush('auto');}catch{}return;}}
   if(forceMonths||Date.now()>=nextMonthListCheck)await refreshMonths(forceMonths);
   if(!token||busy||importing||saving||paused||validationCount()||connectionNeedsCheck||connectionProbe)return;
-  if(pending||hooks.hasUncommittedDate?.()||hooks.canApplyRemote?.()===false||document.hidden||document.activeElement?.matches('input,select,textarea'))return;
+  if(document.hidden)return;
+  if(monthFinalization){const id=accountId,session=token,month=selectedMonth,base=revision;try{const r=await api('monthStatus',{month});if(id!==accountId||session!==token||month!==selectedMonth||base!==revision)return;
+   if(r.status==='confirmed'&&!locked()){if(pending||validationCount()||hooks.hasUncommittedDate?.()||hooks.canApplyRemote?.()===false){conflict({code:423,message:'다른 PC에서 이 월을 확정했습니다. 미저장 작업을 유지했습니다. 화면의 작업을 확인한 뒤 최신 확정본을 불러오세요.'});return;}await acceptState(await readData(),true);updateStatus();return;}
+   if(r.status==='draft'&&monthMeta.status==='confirmed'){if(hooks.canApplyRemote?.()===false)return;await acceptState(await readData(),true);updateStatus();return;}
+   if(r.revision===revision)return;
+  }catch(e){if(e.code===401&&!e.staleAuth)conflict(e);return;}}
+  if(pending||hooks.hasUncommittedDate?.()||hooks.canApplyRemote?.()===false||document.activeElement?.matches('input,select,textarea'))return;
   const month=selectedMonth,baseRevision=revision;
   try{const r=await readData(month,baseRevision);if(token&&!connectionNeedsCheck&&!connectionProbe&&currentConnectionContext(responseContexts.get(r))&&!validationCount()&&!hooks.hasUncommittedDate?.()&&month===selectedMonth&&baseRevision===revision&&!pending&&!saving&&!paused&&!busy&&!importing&&hooks.canApplyRemote?.()!==false&&!document.activeElement?.matches('input,select,textarea')&&!r.unchanged&&r.revision!==revision){await acceptState(r,true);updateStatus();}}catch(e){if(e.code===401&&!e.staleAuth)conflict(e);}
  }
+ async function tick(forceMonths=false){if(tickTask)return tickTask;const task=runTick(forceMonths);tickTask=task;try{return await task;}finally{if(tickTask===task)tickTask=null;}}
  async function changeFinalization(reopen=false){
   if(!monthFinalization)throw Error('관리자가 최신 Apps Script를 설치·배포한 뒤 사용할 수 있습니다.');
   if(busy||importing||saving||finalizing||paused||connectionNeedsCheck||connectionProbe)throw Error('현재 작업 또는 연결 문제를 해결한 뒤 진행하세요.');
