@@ -177,7 +177,7 @@ main{max-width:none;padding:26px 22px 18px}.topbar{padding:0 22px}.panel-heading
 <dialog id="monthCreateDialog" class="month-create-dialog" aria-labelledby="monthCreateTitle"><div class="dialog-top"><h2 id="monthCreateTitle">새 월 자료 만들기</h2><button id="closeMonthDialog" class="icon-button" type="button" aria-label="닫기">×</button></div><div class="month-create-body"><label for="newMonthYear">새로 만들 월</label><div class="new-month-picker"><select id="newMonthYear" aria-label="새 월의 연도"></select><select id="newMonthNumber" aria-label="새 월의 월"></select></div><input id="newMonth" type="hidden"><fieldset class="start-options"><legend>시작 방법</legend><label class="start-option"><input type="radio" name="monthStart" value="empty" checked><span><strong>빈 월로 시작</strong><small>자료 없이 시작하고 새 엑셀을 불러옵니다.</small></span></label><label class="start-option"><input type="radio" name="monthStart" value="copy"><span><strong>기존 월 자료 복사</strong><small>선택한 월의 마지막 저장본을 가져옵니다.</small></span></label></fieldset><div id="copyOptions" hidden><label for="copySourceMonth">복사할 월</label><select id="copySourceMonth"><option value="">복사할 월을 선택하세요</option></select><div id="copyScope" class="copy-scope">복사할 월을 선택하면 포함되는 자료를 확인할 수 있습니다.</div></div><p id="monthStartNotice" class="month-create-hint">2026년 12월을 빈 월로 시작합니다. 기존 월의 저장 자료는 유지됩니다.</p><div class="button-group"><button id="cancelMonthDialog" class="button" type="button">취소</button><button id="createMonth" class="button primary" type="button">빈 월 만들기</button></div></div></dialog>
 <dialog id="resetMonthDialog" aria-labelledby="resetMonthTitle"><div class="dialog-top"><h2 id="resetMonthTitle">현재 월 자료 초기화</h2><button id="resetMonthClose" class="icon-button" aria-label="닫기">×</button></div><div style="padding:24px"><p id="resetMonthScope"></p><p style="margin:14px 0">업로드한 모든 과정, 수기 인원, 최종정산 선택, 집계 수기값을 비웁니다. 다른 월과 다른 기관의 자료는 유지됩니다.</p><p style="color:#8c621e;margin-bottom:18px">확인 후에도 저장 전에는 초기화 취소로 되돌릴 수 있습니다. 저장 버튼 또는 10분 자동저장이 완료된 뒤에는 관리자에게 백업 복원을 요청해야 합니다.</p><div class="button-group"><button id="resetMonthCancel" class="button">취소</button><button id="resetMonthConfirm" class="button primary">이 월만 초기화</button></div></div></dialog>
 <dialog id="unsavedDialog" class="unsaved-dialog" aria-labelledby="unsavedTitle"><div class="dialog-top"><h2 id="unsavedTitle">미저장 변경사항이 있습니다</h2></div><div class="unsaved-body"><p>현재 월의 변경사항을 저장한 뒤 이동할까요?</p><p id="unsavedValidationText" class="unsaved-validation-text" hidden>입력 오류를 수정해야 저장할 수 있습니다. 저장하지 않고 이동하면 입력 중인 오류 값도 사라집니다.</p><p id="unsavedConnectionText" class="unsaved-connection-text" hidden>서버 연결을 다시 확인해야 저장할 수 있습니다. 필요한 경우 이동을 취소하고 내 작업을 먼저 백업해 주세요.</p><p class="muted">저장하지 않고 이동하면 마지막 저장 이후의 변경사항은 사라집니다.</p><div class="button-group"><button id="unsavedCancel" class="button" type="button">취소</button><button id="unsavedDiscard" class="button" type="button">저장하지 않고 이동</button><button id="unsavedSave" class="button primary" type="button">저장 후 이동</button></div></div></dialog>
-<dialog id="rulesDialog"><div class="dialog-top"><h2>참고 사항</h2><button class="icon-button" id="closeRules" aria-label="닫기">×</button></div><div class="rules-content"><p>집계 기준과 입력·정산 시 유의사항을 확인하세요.</p><section class="reference-current"><h3>현재 조회 조건의 확인 항목</h3><p id="referenceScope"></p><div id="settlementNotice" class="settlement-notice" role="status"></div></section><h3>① 기업수 집계 기준</h3><ul><li>각 사업유형 안에서 사업자등록번호 중복을 제외한 뒤 합산합니다.</li><li>재직자와 재직자(데이터확인필요)를 함께 선택하면 두 유형 사이의 사업자등록번호 중복도 한 번 더 제외합니다.</li><li>다른 사업유형 간 기업수는 단순 합산합니다.</li></ul><h3>② 재직자(데이터확인필요) 집계 기준</h3><ul><li>과정수는 과정ID, 회차수는 과정ID와 회차를 기준으로 중복을 제외합니다.</li><li>과정별 검증 목록에는 기업별 원본 행을 모두 표시하므로 집계 회차수와 목록의 행 수가 다를 수 있습니다.</li></ul><h3>③ 훈련단계와 인원 확인</h3><ul><li>‘종료단계’는 아직 훈련 중인 상태입니다. ‘훈련기간 종료’는 종료일이 지났거나 전원이 중도탈락한 회차입니다.</li><li>중도탈락일이 없어 과거 조회일 당시의 인원을 복원할 수 없습니다. 중탈인원은 업로드한 파일의 값을 사용합니다.</li><li>인원 확인이 필요한 항목은 과정별 검증 목록에서 입력합니다. 노란색 칸은 수기 입력 대상입니다.</li></ul><h3>④ 최종정산 빈칸 처리</h3><p>훈련기간이 종료되어도 정산 상태가 빈칸이면 ‘완료’와 ‘미완료’ 어느 쪽에도 포함하지 않습니다. 정산 빈칸 건수를 눌러 해당 과정을 확인하고 상태를 선택하세요.</p><h3>⑤ 과정연계 과정 집계 안내</h3><p>현재 집계에는 과정연계 과정의 특성을 반영한 별도 기준이 적용되어 있지 않습니다. 과정연계 과정이 포함된 경우, 집계 결과를 별도로 확인해 주세요.</p></div></dialog>
+<dialog id="rulesDialog"><div class="dialog-top"><h2>참고 사항</h2><button class="icon-button" id="closeRules" aria-label="닫기">×</button></div><div class="rules-content"><p>집계 기준과 입력·정산 시 유의사항을 확인하세요.</p><section class="reference-current"><h3>현재 조회 조건의 확인 항목</h3><p id="referenceScope"></p><div id="settlementNotice" class="settlement-notice" role="status"></div></section><h3>① 기업수 집계 기준</h3><ul><li>각 사업유형 안에서 사업자등록번호 중복을 제외한 뒤 합산합니다.</li><li>재직자와 재직자(데이터확인필요)를 함께 선택하면 두 유형 사이의 사업자등록번호 중복도 한 번 더 제외합니다.</li><li>다른 사업유형 간 기업수는 단순 합산합니다.</li></ul><h3>② 인원 확인 대상 과정의 집계 기준</h3><ul><li>과정수는 과정ID, 회차수는 과정ID와 회차를 기준으로 중복을 제외합니다.</li><li>과정별 검증 목록에는 기업별 원본 행을 모두 표시하므로 집계 회차수와 목록의 행 수가 다를 수 있습니다.</li></ul><h3>③ 훈련단계와 인원 확인</h3><ul><li>‘종료단계’는 아직 훈련 중인 상태입니다. ‘훈련기간 종료’는 종료일이 지났거나 전원이 중도탈락한 회차입니다.</li><li>중도탈락일이 없어 과거 조회일 당시의 인원을 복원할 수 없습니다. 중탈인원은 업로드한 파일의 값을 사용합니다.</li><li>인원 확인이 필요한 항목은 과정별 검증 목록에서 입력합니다. 노란색 칸은 수기 입력 대상입니다.</li></ul><h3>④ 최종정산 빈칸 처리</h3><p>훈련기간이 종료되어도 정산 상태가 빈칸이면 ‘완료’와 ‘미완료’ 어느 쪽에도 포함하지 않습니다. 정산 빈칸 건수를 눌러 해당 과정을 확인하고 상태를 선택하세요.</p><h3>⑤ 과정연계 과정 집계 안내</h3><p>현재 집계에는 과정연계 과정의 특성을 반영한 별도 기준이 적용되어 있지 않습니다. 과정연계 과정이 포함된 경우, 집계 결과를 별도로 확인해 주세요.</p></div></dialog>
 <dialog id="columnDialog" class="column-dialog" aria-labelledby="columnTitle"><div class="dialog-top"><h2 id="columnTitle">열 필터 / 정렬</h2><button class="icon-button" id="columnClose" aria-label="닫기">×</button></div><div class="column-body"><div class="column-sort"><button class="button" id="columnAsc">↑ 오름차순</button><button class="button" id="columnDesc">↓ 내림차순</button></div><input type="search" id="columnSearch" class="column-search" placeholder="필터 값 검색" aria-label="필터 값 검색"><div class="text-actions"><button id="columnSelectAll">검색 결과 전체 선택</button><button id="columnSelectNone">검색 결과 해제</button></div><div id="columnOptions" class="column-options"></div><div class="column-footer"><button class="button" id="columnReset">이 열 필터 해제</button><button class="button primary" id="columnApply">필터 적용</button></div></div></dialog>
 <button id="inputErrorFloating" class="input-error-floating" type="button" hidden><strong id="inputErrorFloatingCount"></strong><span>오류 확인 ↗</span></button><div id="toast" class="toast" role="status" hidden></div>
 <dialog id="monthComparisonDialog" class="workflow-dialog"><div class="dialog-top"><h2>월별 저장본 비교</h2><button id="monthComparisonClose" class="icon-button" aria-label="월별 비교 닫기">×</button></div><div class="workflow-dialog-body"><p id="monthComparisonInfo" role="status"></p><div id="monthComparisonTabs" class="workflow-tabs"><button data-kind="added">신규 <b>0</b></button><button data-kind="ended">종료 전환 <b>0</b></button><button data-kind="people">인원 변경 <b>0</b></button><button data-kind="absent">이번 월에 없음 <b>0</b></button></div><p>같은 사업유형·기업·과정ID·회차를 연결합니다. 신규는 이번 월에만 있는 과정, 종료 전환은 전월에 종료 상태가 아니었다가 이번 월에 종료된 과정입니다. 인원 변경은 원본 총인원·중탈인원·수기값 변경을 포함하며, 항목 간 중복될 수 있습니다.</p><div class="workflow-table-scroll"><table><thead><tr><th>사업유형 / 기업</th><th>과정 / 회차</th><th>전월 저장본</th><th>이번 월 저장본</th></tr></thead><tbody id="monthComparisonRows"></tbody></table></div></div></dialog>
@@ -201,7 +201,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 (function(root){
 'use strict';
 let careerGrouping=false;
+let businessTypeGrouping=false;
 const DAY=86400000, clean=v=>String(v??'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')');
+const LEDGER_BUSINESS_TYPES_V2 = new Map([
+ ['공동훈련센터','재직자(비학위)'],
+ ['공동훈련센터형','재직자(비학위)'],
+ ['재직자','재직자(비학위)'],
+ ['재직자(비학위)','재직자(비학위)'],
+ ['대학연계형','재직자(학위)'],
+ ['재직자(학위)','재직자(학위)'],
+ ...['경력개발고도화','P-TECH','전문대재학생단계','4년제','대학원',
+     '첨단산업아카데미','구직자','외국인유학생','특화대학','고숙련',
+     '유니테크','민간자율형'].map(name=>[name,name]),
+]);
+
+function ledgerBusinessTypeV2_(base, course) {
+ const normalized=String(course??'').replace(/\s+/g,'')
+  .replace(/（/g,'(').replace(/）/g,')');
+ const courseType=normalized.match(/(?:^|\D)\d{4}년_([^_]+)/)?.[1];
+ const operationType=LEDGER_BUSINESS_TYPES_V2.get(base.toUpperCase())??base;
+ return LEDGER_BUSINESS_TYPES_V2.get(courseType?.toUpperCase())??operationType;
+}
 const header=v=>{const h=clean(v);return h==='회차'?'회차(정보)':/^사업자등록번호\.\d+$/.test(h)?'사업자등록번호':h;};
 const iso=d=>new Date(d).toISOString().slice(0,10);
 function day(v,date1904=false){
@@ -227,6 +247,10 @@ function parseSheets(sheets,date1904=false){
  const op=clean(r[col('운영형태')]); if(!op.startsWith('학습기업')){excluded++;return;}
  const base=op==='학습기업(공동훈련센터)'?'재직자':(op.match(/^학습기업\((.+)\)$/)?.[1]||op);
  const size=integer(r[col('학습기업수')]), flag=base==='재직자'&&size>=2;
+ const course=String(r[col('훈련과정')]??'');
+ let type=flag?'재직자(데이터확인필요)':base;
+ if(businessTypeGrouping)type=ledgerBusinessTypeV2_(base,course);
+ else if(careerGrouping&&op==='학습기업(공동훈련센터)'&&clean(course).includes('경력개발고도화'))type='경력개발고도화';
  const start=day(r[col('훈련시작일')],date1904),end=day(r[col('훈련종료일')],date1904),total=integer(r[col('총훈련인원')]),drop=integer(r[col('중탈인원')]),round=integer(r[col('회차(정보)')]);
  const business=String(r[biz]??'').replace(/[^0-9]/g,'').padStart(10,'0');
  const problems=[];
@@ -236,7 +260,7 @@ function parseSheets(sheets,date1904=false){
  if(business==='0000000000'||business.length!==10)problems.push('기업 사업자등록번호');
  if(!String(r[company]??'').trim()||!String(r[col('훈련과정ID')]??'').trim())problems.push('기업명·과정ID');
  if(problems.length){errors.push(`${sheet.name} ${excelRow}행: ${problems.join(', ')} 확인`);return;}
- rows.push({id:sheet.name+':'+excelRow,sheet:sheet.name,excelRow,op,base,type:careerGrouping&&op==='학습기업(공동훈련센터)'&&clean(r[col('훈련과정')]).includes('경력개발고도화')?'경력개발고도화':flag?'재직자(데이터확인필요)':base,flag,company:String(r[company]),business,course:String(r[col('훈련과정')]??''),courseId:String(r[col('훈련과정ID')]??''),kind:String(r[col('훈련과정구분')]??''),institution:String(r[col('훈련기관')]??''),size,round,total,drop,start,end});
+ rows.push({id:sheet.name+':'+excelRow,sheet:sheet.name,excelRow,op,base,type,flag,company:String(r[company]),business,course,courseId:String(r[col('훈련과정ID')]??''),kind:String(r[col('훈련과정구분')]??''),institution:String(r[col('훈련기관')]??''),size,round,total,drop,start,end,...(businessTypeGrouping?{typeRule:2}:{})});
  });
  }
  if(!matched)errors.push('운영형태·훈련시작일이 있는 훈련실시조회 시트를 찾을 수 없습니다.');
@@ -270,7 +294,7 @@ function validateState(s){
  if(!s.overrides||typeof s.overrides!=='object'||Object.values(s.overrides).some(v=>!Number.isInteger(v)||v<0))throw Error('백업의 집계 수정값이 올바르지 않습니다.');
  return s;
 }
-const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
+const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:value=>{businessTypeGrouping=value===true;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
@@ -365,7 +389,7 @@ const Review=root.LedgerReview||(typeof module!=='undefined'?require('./review.j
 function key(r){return 'row:'+JSON.stringify([String(r.op).replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')'),String(r.business),String(r.courseId).trim(),r.round]);}
 function migrate(state){const s=clone(state),seen=new Set(),edits={};s.rows=s.rows.map(r=>{const id=key(r);if(seen.has(id))throw Error('같은 운영형태·기업·과정ID·회차가 중복되어 있습니다.');seen.add(id);if(s.edits[r.id])edits[id]=s.edits[r.id];return {...r,id};});s.edits=edits;return s;}
 function merge(current,incoming,fileName,sourceCount,excluded){const s=migrate(current),baseline=clone(s),rows=new Map(s.rows.map(r=>[r.id,r])),oldTypes=new Set(s.rows.map(r=>r.type)),seen=new Set(),report={added:0,updated:0,unchanged:0,retained:0};
- for(const raw of incoming){const id=key(raw);if(seen.has(id))throw Error('새 엑셀에 같은 운영형태·기업·과정ID·회차가 중복되어 있습니다.');seen.add(id);const r={...clone(raw),id},old=rows.get(id);if(!old)report.added++;else if(['company','course','kind','institution','size','total','drop','start','end'].some(k=>old[k]!==r[k]))report.updated++;else report.unchanged++;rows.set(id,r);}
+ for(const raw of incoming){const id=key(raw);if(seen.has(id))throw Error('새 엑셀에 같은 운영형태·기업·과정ID·회차가 중복되어 있습니다.');seen.add(id);const r={...clone(raw),id},old=rows.get(id);if(!old)report.added++;else if(['company','course','type','kind','institution','size','total','drop','start','end'].some(k=>old[k]!==r[k]))report.updated++;else report.unchanged++;rows.set(id,r);}
  if(rows.size>50000)throw Error('기관별 최대 50,000행까지 보관할 수 있습니다.');s.rows=[...rows.values()];report.retained=rows.size-seen.size;const allTypes=[...new Set(s.rows.map(r=>r.type))];s.selected=[...s.selected.filter(t=>allTypes.includes(t)),...allTypes.filter(t=>!oldTypes.has(t))];s.fileName=fileName;s.sourceCount=sourceCount;s.excluded=excluded;Review?.update(baseline,s);return {state:s,report};}
 const api={key,migrate,merge};root.LedgerMerge=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
@@ -472,7 +496,7 @@ window.LedgerCloud=(()=>{
   const recovering=connectionNeedsCheck;connectionNeedsCheck=false;connectionState='ok';lastConnectionError='';if(recovering)nextAuto=Date.now()+AUTO_MS;if(recovering||announce)connectionNotice=true;
   if(saveTransportError){saveTransportError=false;if(!paused&&!authRequired)$('syncConflict').hidden=true;}updateStatus();return true;
  }
- function resetConnection(){Training.setCareerGrouping(false);connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;lastConnectionError='';}
+ function resetConnection(){Training.setCareerGrouping(false);Training.setBusinessTypeGrouping(false);connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;lastConnectionError='';}
  function renderConnection(){
   const active=!!token&&!!accountId,checking=!!connectionProbe,state=authRequired?'auth':checking?'checking':connectionState;
   $('connectionSummary').hidden=!active;$('connectionBadge').hidden=!active;
@@ -524,7 +548,11 @@ window.LedgerCloud=(()=>{
     if(response.ok===false){const e=Error('서버 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');e.connectionFailure=true;e.httpStatus=response.status;throw e;}
     let v;try{v=await response.json();}catch{throw Error('Google 웹앱의 접근 권한과 /exec 주소를 확인해 주세요.');}
     if(!v||v.ok!==true){const e=Error(v?.error||'요청에 실패했습니다.');e.code=v?.code||500;e.staleAuth=e.code===401&&action!=='login'&&requestToken!==token;if(e.code<500&&e.code!==401)recordConnectionResponse(context);if(e.code===401&&!e.staleAuth&&action!=='login'&&accountId)conflict(e);throw e;}
-    if((action==='readMonth'||action==='read')&&currentConnectionContext(context))Training.setCareerGrouping(v.careerGrouping===true);responseContexts.set(v,context);recordConnectionResponse(context);return v;
+    if((action==='readMonth'||action==='read')&&currentConnectionContext(context)){
+     Training.setCareerGrouping(v.careerGrouping===true);
+     Training.setBusinessTypeGrouping(v.businessTypeGrouping===2);
+    }
+    responseContexts.set(v,context);recordConnectionResponse(context);return v;
    }catch(e){
     const transient=e.httpStatus?[408,429,500,502,503,504].includes(e.httpStatus):!e.code||[429,500,502,503,504].includes(e.code);
     if(attempt===0&&retryableRead&&transient&&!browserOffline()&&requestToken===token&&currentConnectionContext(context)){clearTimeout(timeout);await new Promise(resolve=>setTimeout(resolve,800+Math.floor(Math.random()*400)));if(requestToken!==token)throw e;continue;}
@@ -829,9 +857,9 @@ const api={plan};root.LedgerViewState=api;if(typeof module!=='undefined')module.
 <script>
 (function(root){
 'use strict';
-const fields=['company','course','kind','institution','size','total','drop','start','end'];
+const fields=['company','course','type','kind','institution','size','total','drop','start','end'];
 const categories=[['changed','변경 과정'],['added','신규 과정'],['updated','기존 과정 갱신'],['dropChanged','중탈인원 변경'],['periodChanged','훈련기간 변경'],['retained','기존 자료 유지'],['needsReview','수기 인원 재확인'],['all','전체 과정']];
-const labels={company:'기업명',course:'과정명',kind:'과정 구분',institution:'훈련기관',size:'학습기업수',total:'원본 인원',drop:'중탈인원',start:'시작일',end:'종료일'};
+const labels={company:'기업명',course:'과정명',type:'사업유형',kind:'과정 구분',institution:'훈련기관',size:'학습기업수',total:'원본 인원',drop:'중탈인원',start:'시작일',end:'종료일'};
 const copy=v=>JSON.parse(JSON.stringify(v));
 function compare(current,incoming,mergeApi){
  const before=mergeApi.migrate(current),oldRows=new Map(before.rows.map(r=>[r.id,r])),seen=new Set(),items=[];
@@ -1092,7 +1120,7 @@ const context=()=>JSON.stringify([state.date,[...state.selected].sort(),tab]);
 const overrideKey=(column,metric)=>context()+'|'+column+'|'+metric;
 function aggregation(){const frozen=safetyUI?.frozen(tab);if(frozen)return frozen;return tab==='all'?T.aggregateSelected(state.rows,state.selected,state.date,state.edits):T.aggregate(scope(),state.date,state.edits);}
 const displayLearners=m=>m.missing?`${fmt(m.learners)}<span class="number-sub">+ 미입력 ${fmt(m.missing)}건</span>`:fmt(m.learners);
-function renderTypes(){const ts=types();$('typeCount').textContent=ts.length+'개';$('types').innerHTML=ts.length?ts.map((t,i)=>`<label class="type-chip ${state.selected.includes(t)?'checked':''} ${t.includes('데이터확인')?'flagged':''}"><input type="checkbox" data-type="${esc(t)}" ${state.selected.includes(t)?'checked':''}><span>${esc(t)}</span><span class="chip-count">${fmt(state.rows.filter(r=>r.type===t).length)}건</span></label>`).join(''):'<div class="empty-types">파일을 불러오면 운영형태에 따라 사업유형이 표시됩니다.</div>';
+function renderTypes(){const ts=types();$('typeCount').textContent=ts.length+'개';$('types').innerHTML=ts.length?ts.map((t,i)=>`<label class="type-chip ${state.selected.includes(t)?'checked':''} ${t.includes('데이터확인')?'flagged':''}"><input type="checkbox" data-type="${esc(t)}" ${state.selected.includes(t)?'checked':''}><span>${esc(t)}</span><span class="chip-count">${fmt(state.rows.filter(r=>r.type===t).length)}건</span></label>`).join(''):'<div class="empty-types">엑셀을 불러오면 사업유형이 표시됩니다.</div>';
  $('summaryTabs').innerHTML=`<button class="tab ${tab==='all'?'selected':''}" data-tab="all">선택 유형 합산</button>`+state.selected.map(t=>`<button class="tab ${tab===t?'selected':''}" data-tab="${esc(t)}">${esc(t)}</button>`).join('');}
 const summaryCardIcons=["<rect x=\"5\" y=\"3\" width=\"14\" height=\"18\" rx=\"2\"/><path d=\"M9 21v-4h6v4M9 7h.01M15 7h.01M9 11h.01M15 11h.01\"/>", "<path d=\"M12 6v15M3 4h4a5 5 0 0 1 5 2 5 5 0 0 1 5-2h4v15h-4a6 6 0 0 0-5 2 6 6 0 0 0-5-2H3z\"/>", "<path d=\"M20 7h-5m5 0V2M4 17h5m-5 0v5M20 7a8.5 8.5 0 0 0-14.5-1M4 17a8.5 8.5 0 0 0 14.5 1\"/><path d=\"M12 8v5l3 2\"/>", "<circle cx=\"9\" cy=\"7\" r=\"3\"/><path d=\"M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5\"/>"];
 function renderCards(){const a=(safetyUI?.frozen('all')||T.aggregateSelected(state.rows,state.selected,state.date,state.edits)).report;const has=state.rows.length>0;const values=[['실시신고 기업수',a.companies,'개','유형별 사업자등록번호 중복 제외','▧'],['실시신고 과정수',a.courses,'개','확인필요 유형은 과정ID 중복 제외','▤'],['실시신고 회차수',a.rounds,'개','확인필요 유형은 ID·회차 중복 제외','▦'],['실시신고 학습근로자',a.learners,'명',a.missing?'미입력 항목은 아래 ‘인원 확인 필요’에서 확인하세요.':'중도탈락을 포함한 전체 인원','♧']];$('cards').innerHTML=values.map((c,i)=>`<article class="card ${i===0?'featured':''}"><div class="card-label">${c[0]}</div><span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${summaryCardIcons[i]}</svg></span><div class="card-value">${has?fmt(c[1]):'—'}<small>${c[2]}</small></div><div class="card-foot ${i===3&&a.missing?'amber':''}">${i===3&&a.missing?`<button type="button" class="workflow-count-link" data-workflow-filter="missing">${c[3]} →</button>`:c[3]}</div></article>`).join('');}
@@ -1100,7 +1128,7 @@ function summaryCell(a,column,metric){const draftKey=IV.summaryKey(inputScope(),
  return `<td class="${column==='report'?'report-cell':''}">${!state.rows.length?'—':metric==='learners'?displayLearners(m):fmt(value)}</td>`;}
 function renderSummary(){const both=tab==='all'&&state.selected.includes('재직자')&&state.selected.includes('재직자(데이터확인필요)');$('companyDedupNotice').hidden=!both;$('companyDedupNotice').textContent=both?'재직자 두 유형 간 중복 기업 '+fmt((LedgerCloud.monthInfo?.().status==='confirmed'?LedgerCloud.monthInfo().frozen.overlap:T.residentCompanyOverlap(state.rows,state.selected)))+'개 제외':'';const a=aggregation();const cols=['report','initial','progress','closing','ended','done','undone'];const rows=[['기업수','companies'],['과정수','courses'],['회차수','rounds'],['학습근로자수','learners'],['중도탈락자수','drop']];$('summaryTable').innerHTML=`<table class="summary-table"><thead><tr><th rowspan="2" class="first-head">구분</th><th rowspan="2">실시신고</th><th colspan="3">훈련 중</th><th rowspan="2">훈련기간 종료<br>전체</th><th colspan="2">훈련기간 종료 · 최종정산</th></tr><tr><th>초기단계</th><th>진행단계</th><th>종료단계</th><th>완료</th><th>미완료</th></tr></thead><tbody>${rows.map(([label,metric])=>`<tr class="${metric==='drop'?'drop-row':''}"><th scope="row">${label}</th>${cols.map(c=>(['companies','courses'].includes(metric)&&c!=='report')||(metric==='drop'&&!['initial','progress','closing'].includes(c))?'<td class="dash">−</td>':summaryCell(a,c,metric)).join('')}</tr>`).join('')}</tbody></table>`;
  $('summarySubtitle').textContent=tab==='all'?`${state.selected.length}개 유형 합산 · ${state.date} 기준`:`${tab} · ${state.date} 기준`;
- const notices=[];if(scope().some(r=>r.flag))notices.push('학습기업수가 2 이상인 재직자·경력개발고도화 행: 과정ID와 ID별 회차를 중복 제거합니다. 과정별 검증 목록은 기업별 원본 행을 모두 표시하므로 회차수와 목록 건수가 다를 수 있습니다.');notices.push(`최종정산 빈칸 ${fmt(a.blank.rounds)}회차 · ${fmt(a.blank.learners)}명${a.blank.missing?' · 미입력 인원은 별도 확인':''} — 완료·미완료 합계에서 제외됩니다.`);
+ const notices=[];if(scope().some(r=>r.flag))notices.push('인원 확인 대상 과정은 과정ID와 과정ID별 회차의 중복을 제외합니다. 과정별 검증 목록은 기업별 원본 행을 모두 표시하므로 회차수와 목록 건수가 다를 수 있습니다.');notices.push(`최종정산 빈칸 ${fmt(a.blank.rounds)}회차 · ${fmt(a.blank.learners)}명${a.blank.missing?' · 미입력 인원은 별도 확인':''} — 완료·미완료 합계에서 제외됩니다.`);
  notices.push(a.report.missing?'미입력 항목은 집계 화면의 ‘인원 확인 필요’ 바로가기에서 확인하세요. 미입력 인원은 0명으로 확정하지 않습니다.':'현재 확인할 미입력 인원이 없습니다.');
  if(a.planned.rounds)notices.push(`조회일 기준 훈련 시작 14일 이전인 ${fmt(a.planned.rounds)}회차는 실시신고에 포함되며 훈련 중 집계에서는 제외됩니다.`);
  const count=Object.keys(state.overrides).filter(k=>k.startsWith(context()+'|')).length;if(count)notices.push(`수기 수정 ${count}칸 적용 중 · 아래 과정별 값과 다를 수 있습니다. ↶ 버튼으로 자동계산을 복원하세요.`);
