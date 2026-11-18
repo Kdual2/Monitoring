@@ -201,7 +201,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 (function(root){
 'use strict';
 let careerGrouping=false;
-let businessTypeGrouping=false;
+let businessTypeRule=0;
 const DAY=86400000, clean=v=>String(v??'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')');
 const LEDGER_BUSINESS_TYPES_V2 = new Map([
  ['공동훈련센터','재직자(비학위)'],
@@ -221,6 +221,11 @@ function ledgerBusinessTypeV2_(base, course) {
  const courseType=normalized.match(/(?:^|\D)\d{4}년_([^_]+)/)?.[1];
  const operationType=LEDGER_BUSINESS_TYPES_V2.get(base.toUpperCase())??base;
  return LEDGER_BUSINESS_TYPES_V2.get(courseType?.toUpperCase())??operationType;
+}
+function ledgerBusinessTypeV3_(base, course){
+ const name=String(course??'').replace(/\s+/g,'');
+ if(name.includes('경력개발고도화'))return '경력개발고도화';
+ return ledgerBusinessTypeV2_(base,course);
 }
 const header=v=>{const h=clean(v);return h==='회차'?'회차(정보)':/^사업자등록번호\.\d+$/.test(h)?'사업자등록번호':h;};
 const iso=d=>new Date(d).toISOString().slice(0,10);
@@ -249,7 +254,8 @@ function parseSheets(sheets,date1904=false){
  const size=integer(r[col('학습기업수')]), flag=base==='재직자'&&size>=2;
  const course=String(r[col('훈련과정')]??'');
  let type=flag?'재직자(데이터확인필요)':base;
- if(businessTypeGrouping)type=ledgerBusinessTypeV2_(base,course);
+ if(businessTypeRule===3)type=ledgerBusinessTypeV3_(base,course);
+ else if(businessTypeRule===2)type=ledgerBusinessTypeV2_(base,course);
  else if(careerGrouping&&op==='학습기업(공동훈련센터)'&&clean(course).includes('경력개발고도화'))type='경력개발고도화';
  const start=day(r[col('훈련시작일')],date1904),end=day(r[col('훈련종료일')],date1904),total=integer(r[col('총훈련인원')]),drop=integer(r[col('중탈인원')]),round=integer(r[col('회차(정보)')]);
  const business=String(r[biz]??'').replace(/[^0-9]/g,'').padStart(10,'0');
@@ -260,7 +266,7 @@ function parseSheets(sheets,date1904=false){
  if(business==='0000000000'||business.length!==10)problems.push('기업 사업자등록번호');
  if(!String(r[company]??'').trim()||!String(r[col('훈련과정ID')]??'').trim())problems.push('기업명·과정ID');
  if(problems.length){errors.push(`${sheet.name} ${excelRow}행: ${problems.join(', ')} 확인`);return;}
- rows.push({id:sheet.name+':'+excelRow,sheet:sheet.name,excelRow,op,base,type,flag,company:String(r[company]),business,course,courseId:String(r[col('훈련과정ID')]??''),kind:String(r[col('훈련과정구분')]??''),institution:String(r[col('훈련기관')]??''),size,round,total,drop,start,end,...(businessTypeGrouping?{typeRule:2}:{})});
+ rows.push({id:sheet.name+':'+excelRow,sheet:sheet.name,excelRow,op,base,type,flag,company:String(r[company]),business,course,courseId:String(r[col('훈련과정ID')]??''),kind:String(r[col('훈련과정구분')]??''),institution:String(r[col('훈련기관')]??''),size,round,total,drop,start,end,...(businessTypeRule?{typeRule:businessTypeRule}:{})});
  });
  }
  if(!matched)errors.push('운영형태·훈련시작일이 있는 훈련실시조회 시트를 찾을 수 없습니다.');
@@ -294,7 +300,7 @@ function validateState(s){
  if(!s.overrides||typeof s.overrides!=='object'||Object.values(s.overrides).some(v=>!Number.isInteger(v)||v<0))throw Error('백업의 집계 수정값이 올바르지 않습니다.');
  return s;
 }
-const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:value=>{businessTypeGrouping=value===true;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
+const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=version===3?3:version===2?2:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
@@ -496,7 +502,7 @@ window.LedgerCloud=(()=>{
   const recovering=connectionNeedsCheck;connectionNeedsCheck=false;connectionState='ok';lastConnectionError='';if(recovering)nextAuto=Date.now()+AUTO_MS;if(recovering||announce)connectionNotice=true;
   if(saveTransportError){saveTransportError=false;if(!paused&&!authRequired)$('syncConflict').hidden=true;}updateStatus();return true;
  }
- function resetConnection(){Training.setCareerGrouping(false);Training.setBusinessTypeGrouping(false);connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;lastConnectionError='';}
+ function resetConnection(){Training.setCareerGrouping(false);Training.setBusinessTypeGrouping(0);connectionEpoch++;connectionState='unknown';connectionNeedsCheck=false;lastResponseAt='';connectionNotice=false;connectionProbe=null;saveTransportError=false;lastConnectionError='';}
  function renderConnection(){
   const active=!!token&&!!accountId,checking=!!connectionProbe,state=authRequired?'auth':checking?'checking':connectionState;
   $('connectionSummary').hidden=!active;$('connectionBadge').hidden=!active;
@@ -550,7 +556,7 @@ window.LedgerCloud=(()=>{
     if(!v||v.ok!==true){const e=Error(v?.error||'요청에 실패했습니다.');e.code=v?.code||500;e.staleAuth=e.code===401&&action!=='login'&&requestToken!==token;if(e.code<500&&e.code!==401)recordConnectionResponse(context);if(e.code===401&&!e.staleAuth&&action!=='login'&&accountId)conflict(e);throw e;}
     if((action==='readMonth'||action==='read')&&currentConnectionContext(context)){
      Training.setCareerGrouping(v.careerGrouping===true);
-     Training.setBusinessTypeGrouping(v.businessTypeGrouping===2);
+     Training.setBusinessTypeGrouping(v.businessTypeGrouping);
     }
     responseContexts.set(v,context);recordConnectionResponse(context);return v;
    }catch(e){
