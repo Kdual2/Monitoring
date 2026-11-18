@@ -215,17 +215,28 @@ const LEDGER_BUSINESS_TYPES_V2 = new Map([
      '유니테크','민간자율형'].map(name=>[name,name]),
 ]);
 
-function ledgerBusinessTypeV2_(base, course) {
+function ledgerBusinessTypeV2_(base, course, ignoreQualifiers=false) {
  const normalized=String(course??'').replace(/\s+/g,'')
   .replace(/（/g,'(').replace(/）/g,')');
- const courseType=normalized.match(/(?:^|\D)\d{4}년_([^_]+)/)?.[1];
+ let courseType=normalized.match(/(?:^|\D)\d{4}년_([^_]+)/)?.[1];
+ if(ignoreQualifiers){
+  // Try the full label first so "(학위)" stays part of "재직자(학위)".
+  while(courseType&&!LEDGER_BUSINESS_TYPES_V2.has(courseType.toUpperCase())){
+   const shorter=courseType.replace(/\([^()]*\)$/,'');
+   if(shorter===courseType)break;
+   courseType=shorter;
+  }
+ }
  const operationType=LEDGER_BUSINESS_TYPES_V2.get(base.toUpperCase())??base;
  return LEDGER_BUSINESS_TYPES_V2.get(courseType?.toUpperCase())??operationType;
 }
-function ledgerBusinessTypeV3_(base, course){
+function ledgerBusinessTypeV3_(base, course, ignoreQualifiers=false){
  const name=String(course??'').replace(/\s+/g,'');
  if(name.includes('경력개발고도화'))return '경력개발고도화';
- return ledgerBusinessTypeV2_(base,course);
+ return ledgerBusinessTypeV2_(base,course,ignoreQualifiers);
+}
+function ledgerBusinessTypeV4_(base, course){
+ return ledgerBusinessTypeV3_(base,course,true);
 }
 const header=v=>{const h=clean(v);return h==='회차'?'회차(정보)':/^사업자등록번호\.\d+$/.test(h)?'사업자등록번호':h;};
 const iso=d=>new Date(d).toISOString().slice(0,10);
@@ -254,7 +265,8 @@ function parseSheets(sheets,date1904=false){
  const size=integer(r[col('학습기업수')]), flag=base==='재직자'&&size>=2;
  const course=String(r[col('훈련과정')]??'');
  let type=flag?'재직자(데이터확인필요)':base;
- if(businessTypeRule===3)type=ledgerBusinessTypeV3_(base,course);
+ if(businessTypeRule===4)type=ledgerBusinessTypeV4_(base,course);
+ else if(businessTypeRule===3)type=ledgerBusinessTypeV3_(base,course);
  else if(businessTypeRule===2)type=ledgerBusinessTypeV2_(base,course);
  else if(careerGrouping&&op==='학습기업(공동훈련센터)'&&clean(course).includes('경력개발고도화'))type='경력개발고도화';
  const start=day(r[col('훈련시작일')],date1904),end=day(r[col('훈련종료일')],date1904),total=integer(r[col('총훈련인원')]),drop=integer(r[col('중탈인원')]),round=integer(r[col('회차(정보)')]);
@@ -300,7 +312,7 @@ function validateState(s){
  if(!s.overrides||typeof s.overrides!=='object'||Object.values(s.overrides).some(v=>!Number.isInteger(v)||v<0))throw Error('백업의 집계 수정값이 올바르지 않습니다.');
  return s;
 }
-const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=version===3?3:version===2?2:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
+const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=[2,3,4].includes(version)?version:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
