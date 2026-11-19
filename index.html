@@ -276,6 +276,10 @@ function ledgerBusinessTypeV5_(base, course){
  }
  return operationType;
 }
+function ledgerBusinessTypeV6_(base, course, needsHeadcount){
+ if(needsHeadcount)return '재직자(데이터확인필요)';
+ return ledgerBusinessTypeV5_(base,course);
+}
 const header=v=>{const h=clean(v);return h==='회차'?'회차(정보)':/^사업자등록번호\.\d+$/.test(h)?'사업자등록번호':h;};
 const iso=d=>new Date(d).toISOString().slice(0,10);
 function day(v,date1904=false){
@@ -303,7 +307,8 @@ function parseSheets(sheets,date1904=false){
  const size=integer(r[col('학습기업수')]), flag=base==='재직자'&&size>=2;
  const course=String(r[col('훈련과정')]??'');
  let type=flag?'재직자(데이터확인필요)':base;
- if(businessTypeRule===5)type=ledgerBusinessTypeV5_(base,course);
+ if(businessTypeRule===6)type=ledgerBusinessTypeV6_(base,course,flag);
+ else if(businessTypeRule===5)type=ledgerBusinessTypeV5_(base,course);
  else if(businessTypeRule===4)type=ledgerBusinessTypeV4_(base,course);
  else if(businessTypeRule===3)type=ledgerBusinessTypeV3_(base,course);
  else if(businessTypeRule===2)type=ledgerBusinessTypeV2_(base,course);
@@ -351,7 +356,7 @@ function validateState(s){
  if(!s.overrides||typeof s.overrides!=='object'||Object.values(s.overrides).some(v=>!Number.isInteger(v)||v<0))throw Error('백업의 집계 수정값이 올바르지 않습니다.');
  return s;
 }
-const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=[2,3,4,5].includes(version)?version:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
+const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=[2,3,4,5,6].includes(version)?version:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
