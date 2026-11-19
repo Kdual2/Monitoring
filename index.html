@@ -238,6 +238,44 @@ function ledgerBusinessTypeV3_(base, course, ignoreQualifiers=false){
 function ledgerBusinessTypeV4_(base, course){
  return ledgerBusinessTypeV3_(base,course,true);
 }
+function ledgerBusinessTypeV5_(base, course){
+ const name=String(course??'').replace(/\s+/g,'')
+  .replace(/（/g,'(').replace(/）/g,')');
+ if(name.includes('경력개발고도화'))return '경력개발고도화';
+
+ const lookup=label=>LEDGER_BUSINESS_TYPES_V2.get(label?.toUpperCase());
+ const operationType=lookup(base)??base;
+ const label=name.match(/(?:^|\D)(?:\d{4}|\d{2})년_([^_]+)/)?.[1];
+ if(!label)return operationType;
+ const fullType=lookup(label);
+ if(fullType)return fullType;
+
+ let outside='', start=0, depth=0;
+ const groups=[];
+ for(let i=0;i<label.length;i++){
+  const character=label[i];
+  if(character==='('){
+   if(depth===0)start=i+1;
+   depth++;
+  }else if(character===')'&&depth>0){
+   depth--;
+   if(depth===0)groups.push(label.slice(start,i));
+  }else if(depth===0){
+   outside+=character;
+  }
+ }
+
+ // The degree suffix is part of the registered resident type.
+ const degreeType=outside==='재직자'?label.match(/^재직자\((?:비학위|학위)\)(?=\(|$)/)?.[0]:undefined;
+ const outsideType=lookup(degreeType??outside);
+ if(outsideType)return outsideType;
+
+ for(const group of groups){
+  const insideType=lookup(group);
+  if(insideType)return insideType;
+ }
+ return operationType;
+}
 const header=v=>{const h=clean(v);return h==='회차'?'회차(정보)':/^사업자등록번호\.\d+$/.test(h)?'사업자등록번호':h;};
 const iso=d=>new Date(d).toISOString().slice(0,10);
 function day(v,date1904=false){
@@ -265,7 +303,8 @@ function parseSheets(sheets,date1904=false){
  const size=integer(r[col('학습기업수')]), flag=base==='재직자'&&size>=2;
  const course=String(r[col('훈련과정')]??'');
  let type=flag?'재직자(데이터확인필요)':base;
- if(businessTypeRule===4)type=ledgerBusinessTypeV4_(base,course);
+ if(businessTypeRule===5)type=ledgerBusinessTypeV5_(base,course);
+ else if(businessTypeRule===4)type=ledgerBusinessTypeV4_(base,course);
  else if(businessTypeRule===3)type=ledgerBusinessTypeV3_(base,course);
  else if(businessTypeRule===2)type=ledgerBusinessTypeV2_(base,course);
  else if(careerGrouping&&op==='학습기업(공동훈련센터)'&&clean(course).includes('경력개발고도화'))type='경력개발고도화';
@@ -312,7 +351,7 @@ function validateState(s){
  if(!s.overrides||typeof s.overrides!=='object'||Object.values(s.overrides).some(v=>!Number.isInteger(v)||v<0))throw Error('백업의 집계 수정값이 올바르지 않습니다.');
  return s;
 }
-const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=[2,3,4].includes(version)?version:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
+const api={setCareerGrouping:value=>{careerGrouping=value===true;},careerGrouping:()=>careerGrouping,setBusinessTypeGrouping:version=>{businessTypeRule=[2,3,4,5].includes(version)?version:0;},clean,day,months,plusDays,parseSheets,effective,stage,aggregate,sumGroups,aggregateSelected,residentCompanyOverlap,labels,validateState};root.Training=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
