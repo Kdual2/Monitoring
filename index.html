@@ -182,6 +182,17 @@ main{max-width:none;padding:26px 22px 18px}.topbar{padding:0 22px}.panel-heading
 <button id="inputErrorFloating" class="input-error-floating" type="button" hidden><strong id="inputErrorFloatingCount"></strong><span>오류 확인 ↗</span></button><div id="toast" class="toast" role="status" hidden></div>
 <dialog id="monthComparisonDialog" class="workflow-dialog"><div class="dialog-top"><h2>월별 저장본 비교</h2><button id="monthComparisonClose" class="icon-button" aria-label="월별 비교 닫기">×</button></div><div class="workflow-dialog-body"><p id="monthComparisonInfo" role="status"></p><div id="monthComparisonTabs" class="workflow-tabs"><button data-kind="added">신규 <b>0</b></button><button data-kind="ended">종료 전환 <b>0</b></button><button data-kind="people">인원 변경 <b>0</b></button><button data-kind="absent">이번 월에 없음 <b>0</b></button></div><p>같은 사업유형·기업·과정ID·회차를 연결합니다. 신규는 이번 월에만 있는 과정, 종료 전환은 전월에 종료 상태가 아니었다가 이번 월에 종료된 과정입니다. 인원 변경은 원본 총인원·중탈인원·수기값 변경을 포함하며, 항목 간 중복될 수 있습니다.</p><div class="workflow-table-scroll"><table><thead><tr><th>사업유형 / 기업</th><th>과정 / 회차</th><th>전월 저장본</th><th>이번 월 저장본</th></tr></thead><tbody id="monthComparisonRows"></tbody></table></div></div></dialog>
 <dialog id="downloadDialog" class="workflow-dialog download-dialog"><div class="dialog-top"><h2>다운로드 자료 기준 선택</h2><button id="downloadClose" class="icon-button" aria-label="다운로드 창 닫기">×</button></div><div class="workflow-dialog-body"><p id="downloadScopeInfo"></p><button id="downloadCurrent" class="button primary">현재 화면 엑셀</button><button id="downloadSaved" class="button">마지막 저장본 엑셀</button><p>자료 기준·저장월·조회 기준일·저장 시각·생성 시각을 엑셀의 ‘자료 기준’ 시트에 기록합니다. 다운로드는 서버 저장 작업을 실행하지 않습니다.</p><p id="downloadResult" role="status"></p></div></dialog>
+<dialog id="maintenanceDialog" class="workflow-dialog" aria-labelledby="maintenanceTitle">
+<div class="dialog-top"><h2 id="maintenanceTitle">홈페이지 점검</h2></div>
+<div class="workflow-dialog-body">
+<p id="maintenanceMessage"></p><p id="maintenanceResult" role="status"></p>
+<div class="button-group">
+<button class="button primary" id="maintenanceSave" type="button">지금 저장</button>
+<button class="button" id="maintenanceClose" type="button">확인</button>
+<button class="button" id="maintenanceRetry" type="button" hidden>점검 상태 다시 확인</button>
+</div>
+</div>
+</dialog>
 <script>
 /*!
 
@@ -496,12 +507,103 @@ const api={classify,describe};root.LedgerChangeKind=api;if(typeof module!=='unde
 </script>
 <script>
 'use strict';
+window.LedgerMaintenance=(()=>{
+ const byId=id=>document.getElementById(id);
+ let config, status={mode:'open',version:-1}, dismissed=-1, timer=null, pollTask=null, saving=false;
+ const isBlocked=()=>status.mode==='blocked';
+
+ function render(){
+  if(!config)return;
+  const dialog=byId('maintenanceDialog');
+  if(status.mode==='open'||(status.mode==='notice'&&dismissed===status.version)){
+   if(dialog.open)dialog.close();
+   return;
+  }
+  const blocked=isBlocked();
+  byId('maintenanceTitle').textContent=blocked?'홈페이지 점검 중':'홈페이지 점검 예정';
+  byId('maintenanceMessage').textContent=blocked
+   ? (config.active()?'점검이 끝날 때까지 편집과 저장을 일시 중지합니다. 작업 중이던 탭을 열어 두면 점검이 끝난 뒤 이어서 작업할 수 있습니다.':'기능과 화면을 점검하고 있습니다. 점검이 끝나면 홈페이지를 이용할 수 있습니다.')
+   : (config.active()?'점검을 시작하기 전에 현재 작업을 저장해 주세요.':'홈페이지 점검이 예정되어 있습니다. 작업을 시작하면 점검 전에 저장해 주세요.');
+  byId('maintenanceSave').hidden=blocked||!config.active();
+  byId('maintenanceSave').disabled=saving||!config.canSave();
+  byId('maintenanceSave').textContent=saving?'저장 중…':'지금 저장';
+  byId('maintenanceClose').hidden=blocked;
+  byId('maintenanceRetry').hidden=!blocked;
+  if(!dialog.open)dialog.showModal();
+ }
+
+ function observe(next){
+  if(!next||!['open','notice','blocked'].includes(next.mode)||!Number.isSafeInteger(next.version)||next.version<status.version)return;
+  const previous=status;
+  if(next.version===previous.version&&next.mode===previous.mode)return;
+  status=next;
+  byId('maintenanceResult').textContent='';
+  if(timer===null)timer=setInterval(check,30000);
+  config?.changed?.(status.mode,previous.mode);
+  render();
+ }
+
+ function check(){
+  if(!config||timer===null)return Promise.resolve(false);
+  if(pollTask)return pollTask;
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),12000);
+  pollTask=(async()=>{
+   try{
+    const endpoint=new URL(config.url());
+    endpoint.searchParams.set('maintenance','1');
+    endpoint.searchParams.set('_',String(Date.now()));
+    const response=await fetch(endpoint,{credentials:'omit',redirect:'follow',signal:controller.signal});
+    const result=await response.json();
+    if(!response.ok||!result.ok||!result.maintenance)return false;
+    observe(result.maintenance);
+    return true;
+   }catch{return false;}
+   finally{clearTimeout(timeout);pollTask=null;}
+  })();
+  return pollTask;
+ }
+
+ function configure(options){
+  config=options;
+  const dialog=byId('maintenanceDialog');
+  const dismiss=()=>{if(!isBlocked()){dismissed=status.version;render();}};
+  dialog.oncancel=e=>{e.preventDefault();dismiss();};
+  byId('maintenanceClose').onclick=dismiss;
+  byId('maintenanceRetry').onclick=async()=>{
+   const button=byId('maintenanceRetry');
+   button.disabled=true;
+   const ok=await check();
+   if(isBlocked())byId('maintenanceResult').textContent=ok?'아직 점검 중입니다.':'점검 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+   button.disabled=false;
+  };
+  byId('maintenanceSave').onclick=async()=>{
+   if(isBlocked()||saving||!config.canSave())return;
+   saving=true;
+   byId('maintenanceResult').textContent='';
+   render();
+   try{
+    await config.save();
+    if(!isBlocked())byId('maintenanceResult').textContent=config.hasPending()?'추가 변경사항이 남아 있습니다. 다시 저장해 주세요.':'저장했습니다.';
+   }catch(e){if(!isBlocked())byId('maintenanceResult').textContent=e.message;}
+   finally{saving=false;render();}
+  };
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void check();});
+  window.addEventListener('online',()=>{void check();});
+ }
+ return {configure,observe,isBlocked,render};
+})();
+
+</script>
+<script>
+'use strict';
 window.LedgerCloud=(()=>{
  const SESSION_KEY='ledger-google-session-v1',AUTO_MS=10*60*1000;
  let accountId='',hooks,token='',revision=0,pending=null,saving=null,savingText='',paused=false,authRequired=false,reauthenticating=false,lastSaved='',savedAt='',savedMode='',authMode='unknown',useLegacy=false,monthly=false,selectedMonth='',months=[],monthMenuOpen=true,busy=false,importing=false,nextAuto=0,validationBlocked=false;
  let connectionState='unknown',connectionNeedsCheck=false,lastResponseAt='',connectionNotice=false,connectionProbe=null,connectionEpoch=0,connectionRequest=0,connectionResult=0,saveTransportError=false;
  let startupAccount=null,startupPending=false,startupBusy=false,dataReady=false,startupStage='자료';
- let auditWarning='';
+ let auditWarning='',restoringSession=false;
+ const maintenanceError=()=>Object.assign(Error('홈페이지 점검 중입니다. 잠시 후 다시 이용해 주세요.'),{code:'MAINTENANCE'});
  let tickTask=null,lastConnectionError='';
  let monthMeta={status:'draft'},remoteMonthLock=false,monthFinalization=false,finalizing=false;
  const locked=()=>remoteMonthLock||monthMeta.status==='confirmed';
@@ -591,15 +693,17 @@ window.LedgerCloud=(()=>{
  }
  function updateStatus(){
   renderSaveStatus();
-  $('saveButton').disabled=locked()||finalizing||!token||busy||importing||!!saving||paused||validationCount()>0||connectionNeedsCheck||!!connectionProbe;
+  $('saveButton').disabled=LedgerMaintenance.isBlocked()||locked()||finalizing||!token||busy||importing||!!saving||paused||validationCount()>0||connectionNeedsCheck||!!connectionProbe;
   $('saveButton').textContent=saving?'저장 중…':'저장';$('saveWorkbar').hidden=!token||!accountId;$('workbarMonth').textContent=monthly&&selectedMonth?selectedMonth.slice(0,4)+'년 '+Number(selectedMonth.slice(5))+'월':'기관 자료';$('workbarMonth').title=$('centerLabel').textContent+' · 현재 선택한 저장 자료';$('workbarSavedAt').textContent=savedAt?'마지막 '+(savedMode==='auto'?'자동저장':'저장')+' '+formatTime(savedAt):'아직 저장 완료된 자료가 없습니다.';
   $('logoutButton').disabled=busy||importing||!!saving;$('syncReauth').disabled=busy||importing||!!saving||reauthenticating;
   $('activeMonthLabel').hidden=!monthly;$('activeMonthLabel').textContent=selectedMonth?selectedMonth.slice(0,4)+'년 '+Number(selectedMonth.slice(5))+'월':'';
   $('monthSaveInfo').textContent=monthly&&selectedMonth?selectedMonth.slice(0,4)+'년 '+Number(selectedMonth.slice(5))+'월 자료를 조회·작성 중입니다.':'기관 자료를 조회·작성 중입니다.';
   renderConnection();
+  LedgerMaintenance.render();
   renderMonthListStatus();hooks?.status?.({monthMeta,locked:locked(),remoteLocked:remoteMonthLock,monthFinalization,finalizing,busy:busy||importing,saving:!!saving,connectionNeedsCheck,paused,authRequired,revision});
  }
  async function api(action,data={}){
+  if(LedgerMaintenance.isBlocked())throw maintenanceError();
   if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url()))throw Error('Google 웹앱 주소 연결이 필요합니다.');
   const requestToken=token,context=connectionContext();
   const retryableRead=['identity','months','readMonth','read','monthStatus','readConfirmation'].includes(action);
@@ -609,6 +713,7 @@ window.LedgerCloud=(()=>{
     const response=await fetch(url(),{method:'POST',redirect:'follow',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,token:requestToken,...data}),signal:controller.signal});
     if(response.ok===false){const e=Error('서버 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');e.connectionFailure=true;e.httpStatus=response.status;throw e;}
     let v;try{v=await response.json();}catch{throw Error('Google 웹앱의 접근 권한과 /exec 주소를 확인해 주세요.');}
+    if(v?.ok===false&&v.code===503&&v.maintenance?.mode==='blocked'){LedgerMaintenance.observe(v.maintenance);throw maintenanceError();}
     if(!v||v.ok!==true){const e=Error(v?.error||'요청에 실패했습니다.');e.code=v?.code||500;e.staleAuth=e.code===401&&action!=='login'&&requestToken!==token;if(e.code<500&&e.code!==401)recordConnectionResponse(context);if(e.code===401&&!e.staleAuth&&action!=='login'&&accountId)conflict(e);throw e;}
     if((action==='readMonth'||action==='read')&&currentConnectionContext(context)){
      Training.setCareerGrouping(v.careerGrouping===true);
@@ -616,6 +721,7 @@ window.LedgerCloud=(()=>{
     }
     responseContexts.set(v,context);recordConnectionResponse(context);return v;
    }catch(e){
+    if(e.code==='MAINTENANCE')throw e;
     const transient=e.httpStatus?[408,429,500,502,503,504].includes(e.httpStatus):!e.code||[429,500,502,503,504].includes(e.code);
     if(attempt===0&&retryableRead&&transient&&!browserOffline()&&requestToken===token&&currentConnectionContext(context)){clearTimeout(timeout);await new Promise(resolve=>setTimeout(resolve,800+Math.floor(Math.random()*400)));if(requestToken!==token)throw e;continue;}
     if(e.connectionFailure||!e.code||e.code>=500||e.code===429)recordConnectionFailure(context,e);throw e;
@@ -626,7 +732,7 @@ window.LedgerCloud=(()=>{
  function forget(){token='';resetConnection();resetMonthList();try{sessionStorage.removeItem(SESSION_KEY);}catch{}}
  function setLoginMode(legacy){useLegacy=legacy;$('loginIdLabel').textContent=legacy?'이전 기관 접속코드':'기관ID';$('loginId').type=legacy?'password':'text';$('loginId').placeholder=legacy?'기존 CTR- 접속코드':'예: ORG-12341234';$('loginId').autocomplete=legacy?'off':'username';$('passwordWrap').hidden=legacy;$('loginPassword').required=!legacy;$('loginPassword').value='';$('legacyLoginToggle').textContent=legacy?'기관ID·비밀번호로 입장':'이전 CTR 접속코드로 입장';$('legacyLoginToggle').hidden=authMode==='password';$('loginUpgradeNotice').hidden=authMode!=='legacy'||legacy;$('loginSubmit').disabled=!legacy&&authMode==='legacy';}
  function showLogin(){$('loginForm').hidden=false;$('startupReadPanel').hidden=true;document.body.classList.add('cloud-locked');$('loginScreen').hidden=false;$('loginPassword').value='';setLoginMode(useLegacy);}
- async function detectCapabilities(){try{const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);try{const r=await fetch(url(),{method:'GET',redirect:'follow',credentials:'omit',signal:controller.signal});const p=await r.json();if(p.ok){authMode=p.authMode==='institution-password'?'password':'legacy';monthly=p.monthlyStorage===true;monthFinalization=p.monthFinalization===true&&p.finalizationReady===true;}}finally{clearTimeout(timeout);}}catch{}setLoginMode(false);}
+ async function detectCapabilities(){try{const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);try{const r=await fetch(url(),{method:'GET',redirect:'follow',credentials:'omit',signal:controller.signal});const p=await r.json();if(p.ok){authMode=p.authMode==='institution-password'?'password':'legacy';monthly=p.monthlyStorage===true;monthFinalization=p.monthFinalization===true&&p.finalizationReady===true;LedgerMaintenance.observe(p.maintenance);}}finally{clearTimeout(timeout);}}catch{}setLoginMode(false);}
  function conflict(e){if(e.code===423)remoteMonthLock=true;paused=true;authRequired=e.code===401;$('syncConflict').hidden=false;$('syncConflict').className='message'+(authRequired?' reauth-required':'');$('syncConflictText').textContent=authRequired?'로그인이 만료되었거나 기관 사용 상태가 변경되어 저장을 일시 중지했습니다. 현재 작업은 이 화면에 유지됩니다. 다시 로그인해 주세요.':e.message;$('syncReauth').hidden=!authRequired;$('syncReload').hidden=authRequired;$('syncDismiss').hidden=true;updateStatus();}
  function openReauth(){
   if(!authRequired||busy||importing||saving||reauthenticating)return;
@@ -712,6 +818,7 @@ window.LedgerCloud=(()=>{
  }
  function queue(state){if(!dataReady||startupPending||!token||locked())return;const text=JSON.stringify(state);pending=text===(savingText||lastSaved)?null:text;updateStatus();}
  async function flush(mode='manual'){
+  if(LedgerMaintenance.isBlocked())throw maintenanceError();
   if(!dataReady||startupPending)throw Error('자료를 먼저 불러온 뒤 저장해 주세요.');
   if(!token)throw Error('먼저 로그인하세요.');if(locked())throw Error('확정된 월입니다. 확정을 해제한 뒤 저장하세요.');if(validationCount())throw validationFailure();if(paused)throw Error('먼저 저장 충돌 또는 접속 만료를 해결하세요.');if(connectionNeedsCheck||connectionProbe){const e=Error('서버 연결을 다시 확인한 뒤 저장해 주세요.');e.code='CONNECTION_REQUIRED';throw e;}
   if(saving){await saving;return;}
@@ -721,7 +828,7 @@ window.LedgerCloud=(()=>{
    const r=await api(monthly?'saveMonth':'save',{revision:baseRevision,state:JSON.parse(snapshot),...(monthly?{month,mode}:{})});
    confirmConnection(r);auditWarning=r.auditWarning||'';saveTransportError=false;$('syncConflict').hidden=true;revision=r.revision;lastSaved=snapshot;savedAt=r.savedAt||new Date().toISOString();savedMode=mode;if(r.monthMeta)monthMeta=r.monthMeta;hooks.saveCompleted?.({month,revision});nextAuto=Date.now()+AUTO_MS;
    if(monthly){monthListGeneration++;newRemoteMonths.delete(month);months=months.filter(m=>m.month!==month);months.push({month,revision,savedAt,mode});months.sort((a,b)=>b.month.localeCompare(a.month));renderMonths();}
-  }catch(e){pending=JSON.stringify(hooks.get());if([401,403,409,423].includes(e.code))conflict(e);else if(connectionNeedsCheck){saveTransportError=true;hooks.saveUncertain?.();}else{$('syncConflict').hidden=false;$('syncConflictText').textContent='저장하지 못했습니다. 화면의 작업은 남아 있습니다. 저장 버튼으로 재시도해 주세요. '+e.message;}throw e;
+  }catch(e){pending=JSON.stringify(hooks.get());if(e.code==='MAINTENANCE')throw e;if([401,403,409,423].includes(e.code))conflict(e);else if(connectionNeedsCheck){saveTransportError=true;hooks.saveUncertain?.();}else{$('syncConflict').hidden=false;$('syncConflictText').textContent='저장하지 못했습니다. 화면의 작업은 남아 있습니다. 저장 버튼으로 재시도해 주세요. '+e.message;}throw e;
   }finally{saving=null;savingText='';updateStatus();hooks.restorePosition?.(position);}})();updateStatus();hooks.restorePosition?.(position);await saving;
  }
  function leaveChoice(){return new Promise(resolve=>{const dialog=$('unsavedDialog');$('unsavedTitle').textContent=validationCount()?'입력 오류가 있는 변경사항이 있습니다':'미저장 변경사항이 있습니다';$('unsavedSave').disabled=validationCount()>0||connectionNeedsCheck||!!connectionProbe;$('unsavedValidationText').hidden=validationCount()===0;$('unsavedConnectionText').hidden=!connectionNeedsCheck&&!connectionProbe;$('unsavedSave').onclick=()=>{dialog.close();resolve('save');};$('unsavedDiscard').onclick=()=>{dialog.close();resolve('discard');};$('unsavedCancel').onclick=()=>{dialog.close();resolve('cancel');};dialog.oncancel=e=>{e.preventDefault();dialog.close();resolve('cancel');};dialog.showModal();});}
@@ -771,6 +878,7 @@ window.LedgerCloud=(()=>{
   if(busy||importing)return;setBusy(true);try{const choice=await beforeLeave();if(choice==='cancel')return;forget();pending=null;paused=false;authRequired=false;revision=0;accountId='';selectedMonth='';monthMeta={status:'draft'};remoteMonthLock=false;months=[];hooks.set(hooks.fresh());hooks.render();$('syncConflict').hidden=true;$('loginId').value='';showLogin();}finally{setBusy(false);}
  }
  async function runTick(forceMonths=false){
+  if(LedgerMaintenance.isBlocked())return;
   if(startupPending||!dataReady)return;
   if(!token||busy||importing||saving||connectionProbe)return;
   if(connectionNeedsCheck&&!authRequired){if(!document.hidden&&await checkConnection(false))await refreshMonths(true);return;}
@@ -808,7 +916,20 @@ window.LedgerCloud=(()=>{
    else{$('loginForm').hidden=true;$('startupReadPanel').hidden=false;$('startupReadTitle').textContent='자료를 불러오지 못했습니다';$('startupReadMessage').textContent='로그인은 완료됐지만 자료를 불러오지 못했습니다. '+startupStage+' 조회에 실패했습니다. 저장 자료를 삭제하거나 초기화한 것은 아닙니다. 잠시 후 다시 시도해 주세요.';}
   }finally{startupBusy=false;$('startupReadRetry').disabled=false;$('startupOtherAccount').disabled=false;}
  }
+ async function restoreSession(){
+  if(!token||dataReady||startupBusy||restoringSession||LedgerMaintenance.isBlocked())return;
+  restoringSession=true;
+  try{await loadStartup(startupAccount||(await api('identity')).account);}
+  catch(e){if(e.code!=='MAINTENANCE'){forget();showLogin();}}
+  finally{restoringSession=false;}
+ }
  async function init(callbacks){hooks=callbacks;
+  LedgerMaintenance.configure({
+   url,active:()=>dataReady,hasPending:()=>!!pending,
+   canSave:()=>!!pending&&!$('saveButton').disabled&&dataReady,
+   save:()=>flush('manual'),
+   changed:(next,previous)=>{updateStatus();if(next==='open'&&previous==='blocked')void restoreSession();}
+  });
   $('loginForm').onsubmit=async e=>{e.preventDefault();if(startupBusy)return;$('loginError').textContent='';$('loginSubmit').disabled=true;try{const credentials=useLegacy?{code:$('loginId').value}:{id:$('loginId').value,password:$('loginPassword').value};const r=await api('login',credentials);token=r.token;remember();$('loginPassword').value='';pending=null;paused=false;authRequired=false;$('syncConflict').hidden=true;await loadStartup(r.account);}catch(e){forget();dataReady=false;startupPending=false;startupAccount=null;showLogin();$('loginError').textContent=e.message;}finally{$('loginSubmit').disabled=!useLegacy&&authMode==='legacy';}};
   $('startupReadRetry').onclick=()=>loadStartup(startupAccount);$('startupOtherAccount').onclick=()=>{if(startupBusy)return;forget();startupAccount=null;startupPending=false;dataReady=false;accountId='';selectedMonth='';pending=null;months=[];showLogin();$('loginError').textContent='';};
   $('legacyLoginToggle').onclick=()=>{setLoginMode(!useLegacy);$('loginError').textContent='';};
@@ -826,7 +947,7 @@ window.LedgerCloud=(()=>{
   try{token=sessionStorage.getItem(SESSION_KEY)||'';}catch{}
   if(!url()){$('loginError').textContent='관리자의 Google 웹앱 주소 연결을 기다리고 있습니다.';showLogin();return;}
   await detectCapabilities();
-  if(token){try{await loadStartup((await api('identity')).account);}catch{forget();showLogin();}}
+  await restoreSession();
   setInterval(tick,30000);
  }
  async function readSnapshot(month){
